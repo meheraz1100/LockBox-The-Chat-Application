@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #333;
+        }
+
+        /* Username Modal */
+        #username-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #username-form {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        #username-form h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+
+        #username-form input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            width: 80%;
+            outline: none;
+        }
+
+        #username-form button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #username-form button:hover {
+            background: #764ba2;
+        }
+
+        /* Chat Container */
+        #chat-container {
+            display: none;
+            flex-direction: column;
+            width: 400px;
+            height: 600px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: slideIn 0.5s ease-in-out;
+        }
+
+        /* Messages Section */
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            background: #e0e0e0;
+            max-width: 70%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .message.notification {
+            background: #e0f7fa;
+            text-align: center;
+            font-style: italic;
+            color: #555;
+        }
+
+        .message.self {
+            margin-left: auto;
+            background: #667eea;
+            color: #fff;
+        }
+
+        .message .username {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .message .timestamp {
+            font-size: 12px;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        /* Input Form */
+        #form {
+            display: flex;
+            padding: 10px;
+            background: #f1f1f1;
+        }
+
+        #input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+            outline: none;
+        }
+
+        #form button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #form button:hover {
+            background: #764ba2;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Username Modal -->
+    <div id="username-modal">
+        <div id="username-form">
+            <h2>Welcome to the Chat!</h2>
+            <p>Please enter your name to join:</p>
+            <input id="username-input" autocomplete="off" placeholder="Your name" />
+            <button id="username-submit">Join Chat</button>
+        </div>
+    </div>
+
+    <!-- Chat Container -->
+    <div id="chat-container">
+        <h1 style="text-align: center;">LockBox</h1>
+        <h4 style="text-align: center;">A Secure Chat System By <a href="https://www.linkedin.com/in/dev-meheraz1100/" target="_blank">Mosaiyeb Meheraz</a></h4>
+        <div id="messages"></div>
+        <form id="form">
+            <input id="input" autocomplete="off" placeholder="Type a message..." />
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const usernameModal = document.getElementById('username-modal');
+        const usernameInput = document.getElementById('username-input');
+        const usernameSubmit = document.getElementById('username-submit');
+        const chatContainer = document.getElementById('chat-container');
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+
+        let username = '';
+
+        // Handle username submission
+        usernameSubmit.addEventListener('click', (e) => {
+            e.preventDefault();
+            username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('set username', username);
+                usernameModal.style.display = 'none';
+                chatContainer.style.display = 'flex';
+            }
+        });
+
+        // Handle chat message submission
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', input.value);
+                input.value = '';
+            }
+        });
+
+        // Listen for incoming messages
+        socket.on('chat message', (data) => {
+            const item = document.createElement('div');
+            item.classList.add('message');
+
+            if (data.type === 'notification') {
+                item.classList.add('notification');
+                item.textContent = data.text;
+            } else if (data.type === 'message') {
+                if (data.username === username) {
+                    item.classList.add('self');
+                }
+                item.innerHTML = `
+                    <div class="username">${data.username}</div>
+                    <div class="text">${data.text}</div>
+                    <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                `;
+            }
+
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight;
+        });
+    </script>
+</body>
+</html>
